@@ -1,0 +1,32 @@
+name: Sync to Gitee & GitCode Mirrors
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout full history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to Gitee (if GITEE_TOKEN configured)
+        if: env.GITEE_TOKEN != ''
+        env:
+          GITEE_USER: ${{ secrets.GITEE_USER || 'hhanmj' }}
+          GITEE_TOKEN: ${{ secrets.GITEE_TOKEN }}
+        run: |
+          git push --force "https://${GITEE_USER}:${GITEE_TOKEN}@gitee.com/${GITEE_USER}/sceneport-hub.git" HEAD:main --tags
+
+      - name: Push to GitCode (if GITCODE_TOKEN configured)
+        if: env.GITCODE_TOKEN != ''
+        env:
+          GITCODE_USER: ${{ secrets.GITCODE_USER || 'hhanmj' }}
+          GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+        run: |
+          git push --force "https://${GITCODE_USER}:${GITCODE_TOKEN}@gitcode.com/${GITCODE_USER}/sceneport-hub.git" HEAD:main --tags

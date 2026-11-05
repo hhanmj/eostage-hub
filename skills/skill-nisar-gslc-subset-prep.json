@@ -1,0 +1,9 @@
+{
+  "id": "hub-skill-nisar-gslc-subset-prep",
+  "name_zh": "NISAR L/S 双频 GSLC 远程子集裁剪与准备工作流",
+  "name_en": "NISAR L/S Dual-Band GSLC Remote Subset Workflow",
+  "category": "sar",
+  "description_zh": "针对大体积 NISAR GSLC/GCOV HDF5 产品的按区域远程子集裁剪、频段选择与磁盘空间预检工作流。",
+  "description_en": "AOI-bounded remote subsetting and band selection workflow for large NISAR GSLC/GCOV HDF5 products.",
+  "prompt_template": "你负责协助用户规划 NISAR（L 波段与 S 波段）SAR 数据准备。由于 NISAR 原始整景 HDF5 体积可达 20–60 GB：\n1. 先检查当前工作区 AOI（working_aoi）范围以及目标输出目录可用空间；\n2. 检索 NISAR 产品后，评估是否启用按 AOI 边界的远程子集裁剪（Remote Subsetting），仅拉取研究区覆盖的频率（frequencyA / frequencyB）与极化通道；\n3. 如需整景归档下载，提醒用户核对断点续传与 SHA-256 校验配置；\n4. 调用 propose_plan 提交完整计划等待确认。"
+}

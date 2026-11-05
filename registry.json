@@ -1,0 +1,123 @@
+{
+  "version": 1,
+  "updated_at": "2026-11-05T10:28:46Z",
+  "entries": [
+    {
+      "id": "vertical-grid-egm96",
+      "name": "EGM96 大地水准面高程基准数据",
+      "kind": "component",
+      "version": "1.0.0",
+      "description": "NGA 15' 全球大地水准面高程基准网格 (EPSG:5773)，用于 DEM 正高与 WGS84 椭球高双向转换",
+      "package": "components/vertical-grid-egm96-1.0.0.zip",
+      "sha256": "db239b78b881486eff5f24381f5df200955fbc1d9dd469c399d7459954bb2c2f",
+      "size": 2711433,
+      "install_root": "runtime/vertical-grids",
+      "capabilities": [
+        "egm96"
+      ]
+    },
+    {
+      "id": "vertical-grid-egm2008",
+      "name": "EGM2008 2.5分高精度全球大地水准面",
+      "kind": "component",
+      "version": "1.0.0",
+      "description": "NGA 2.5' 高精度全球大地水准面网格 (EPSG:3855)，适用于高分辨率 InSAR 地形相位精确配准",
+      "package": "components/vertical-grid-egm2008-1.0.0.zip",
+      "sha256": "0884d70e4d1b7786240c97a055b4983b76d18464985b3a2ef339c70fd4a26beb",
+      "size": 80602587,
+      "install_root": "runtime/vertical-grids",
+      "capabilities": [
+        "egm2008"
+      ]
+    },
+    {
+      "id": "compat-worker",
+      "name": "Compatibility Worker 兼容性隔离工作进程",
+      "kind": "component",
+      "version": "1.0.0",
+      "description": "受控隔离工作进程，提供特定传统格式与 SARscape 交付兼容能力",
+      "package": "components/compat-worker-1.0.0.zip",
+      "sha256": "5a19b39583d67e2b6fc9768ac52aefa45f52b4f444ed301bd97f50f6d33f35c7",
+      "size": 64251041,
+      "install_root": "runtime/compat-worker",
+      "capabilities": [
+        "bounded-compatibility-operations"
+      ]
+    },
+    {
+      "id": "skill-alos2-stripmap-insar",
+      "name": "ALOS-2 PALSAR-2 L波段植被穿透形变监测工作流",
+      "kind": "skill",
+      "version": "1.0.0",
+      "description": "针对高植被覆盖山区滑坡与同震形变的 ALOS-2 L波段条带模式检索与干涉配对提示词技能",
+      "package": "skills/skill-alos2-stripmap-insar.json",
+      "sha256": "014cc1012213c27168a0ace65fdf26ca816b4bf64f78863fe3e975d8b5ae507b",
+      "size": 1253,
+      "install_root": "localStorage",
+      "capabilities": [
+        "sar",
+        "alos2",
+        "l-band"
+      ],
+      "skill": {
+        "id": "hub-skill-alos2-stripmap-insar",
+        "name_zh": "ALOS-2 PALSAR-2 L波段植被穿透形变监测工作流",
+        "name_en": "ALOS-2 PALSAR-2 L-band Vegetation Penetration InSAR Workflow",
+        "category": "sar",
+        "description_zh": "针对高植被覆盖山区滑坡与同震形变的 ALOS-2 L波段条带模式（SM1/SM3）检索、极化筛选与干涉对组合工作流。",
+        "description_en": "ALOS-2 L-band stripmap search and interferometric pairing workflow for densely vegetated landslide and coseismic deformation.",
+        "prompt_template": "你是一位精通 L 波段（波长约 23.6 cm）合成孔径雷达干涉测量（InSAR）的专家。在高植被覆盖山区或大梯度同震形变场景下，C 波段容易发生时间失相干，请引导用户完成 ALOS-2 PALSAR-2 数据准备：\n1. 确认目标区域（working_aoi 或 context_aoi）与重点监测时段；\n2. 使用 search_start 检索 ALOS-2 产品，优先筛选 Fine Beam (SM1/SM3, HH 或 HH+HV 极化)，固定同一升降轨方向（ASCENDING 或 DESCENDING）及一致的 Path/Frame；\n3. 结合 COP30/NASADEM 高程数据，规划配套的椭球高 DEM 转换任务；\n4. 通过 propose_plan 提交完整检索与下载计划供用户在确认卡上审批。"
+      }
+    },
+    {
+      "id": "skill-nisar-gslc-subset-prep",
+      "name": "NISAR L/S 双频 GSLC 远程子集裁剪与准备工作流",
+      "kind": "skill",
+      "version": "1.0.0",
+      "description": "针对单景体积达数十 GB 的 NISAR HDF5 产品，优先规划按 AOI 远程子集裁剪与极化波段筛选工作流",
+      "package": "skills/skill-nisar-gslc-subset-prep.json",
+      "sha256": "546955de4d5812b61fc60f07b5a36e7b9610dee86a57c58e8903c51efb1e6e1b",
+      "size": 1065,
+      "install_root": "localStorage",
+      "capabilities": [
+        "sar",
+        "nisar",
+        "remote-subset"
+      ],
+      "skill": {
+        "id": "hub-skill-nisar-gslc-subset-prep",
+        "name_zh": "NISAR L/S 双频 GSLC 远程子集裁剪与准备工作流",
+        "name_en": "NISAR L/S Dual-Band GSLC Remote Subset Workflow",
+        "category": "sar",
+        "description_zh": "针对大体积 NISAR GSLC/GCOV HDF5 产品的按区域远程子集裁剪、频段选择与磁盘空间预检工作流。",
+        "description_en": "AOI-bounded remote subsetting and band selection workflow for large NISAR GSLC/GCOV HDF5 products.",
+        "prompt_template": "你负责协助用户规划 NISAR（L 波段与 S 波段）SAR 数据准备。由于 NISAR 原始整景 HDF5 体积可达 20–60 GB：\n1. 先检查当前工作区 AOI（working_aoi）范围以及目标输出目录可用空间；\n2. 检索 NISAR 产品后，评估是否启用按 AOI 边界的远程子集裁剪（Remote Subsetting），仅拉取研究区覆盖的频率（frequencyA / frequencyB）与极化通道；\n3. 如需整景归档下载，提醒用户核对断点续传与 SHA-256 校验配置；\n4. 调用 propose_plan 提交完整计划等待确认。"
+      }
+    },
+    {
+      "id": "skill-gacos-tropospheric-delay",
+      "name": "GACOS 对流层大气延迟校正配对工作流",
+      "kind": "skill",
+      "version": "1.0.0",
+      "description": "根据已冻结的 SAR 影像时间序列与空间包围盒，自动整理 GACOS 天顶延迟图申请清单与导入流程",
+      "package": "skills/skill-gacos-tropospheric-delay.json",
+      "sha256": "1e76a624f67c22c439e4bbbd2a16be80ef09629ce3307dba96ec64a086ddafd2",
+      "size": 1007,
+      "install_root": "localStorage",
+      "capabilities": [
+        "insar",
+        "gacos",
+        "atmosphere"
+      ],
+      "skill": {
+        "id": "hub-skill-gacos-tropospheric-delay",
+        "name_zh": "GACOS 对流层大气延迟校正配对工作流",
+        "name_en": "GACOS Tropospheric Delay Correction Workflow",
+        "category": "sar",
+        "description_zh": "基于 SAR 像对过境时刻（UTC）与研究区范围规划 GACOS 对流层大气延迟产品获取与结果导入。",
+        "description_en": "Plan GACOS zenith tropospheric delay requests and imports aligned with SAR acquisition UTC timestamps and AOI.",
+        "prompt_template": "你是 InSAR 大气相位屏幕（APS）改正专家。对流层水汽延迟是长波长或大尺度 InSAR 形变测量中最主要的误差源之一：\n1. 读取当前工作台已检索或已选中的 SAR 影像列表，汇总所有唯一成像日期（YYYY-MM-DD）及卫星过境 UTC 时刻；\n2. 核对目标区域外扩边界（建议在 working_aoi 基础上适当外扩以覆盖参考点）；\n3. 引导用户核对 GACOS 请求参数并在收到邮件结果链接后导入为下载/解算任务。"
+      }
+    }
+  ]
+}

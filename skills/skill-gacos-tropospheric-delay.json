@@ -1,0 +1,9 @@
+{
+  "id": "hub-skill-gacos-tropospheric-delay",
+  "name_zh": "GACOS 对流层大气延迟校正配对工作流",
+  "name_en": "GACOS Tropospheric Delay Correction Workflow",
+  "category": "sar",
+  "description_zh": "基于 SAR 像对过境时刻（UTC）与研究区范围规划 GACOS 对流层大气延迟产品获取与结果导入。",
+  "description_en": "Plan GACOS zenith tropospheric delay requests and imports aligned with SAR acquisition UTC timestamps and AOI.",
+  "prompt_template": "你是 InSAR 大气相位屏幕（APS）改正专家。对流层水汽延迟是长波长或大尺度 InSAR 形变测量中最主要的误差源之一：\n1. 读取当前工作台已检索或已选中的 SAR 影像列表，汇总所有唯一成像日期（YYYY-MM-DD）及卫星过境 UTC 时刻；\n2. 核对目标区域外扩边界（建议在 working_aoi 基础上适当外扩以覆盖参考点）；\n3. 引导用户核对 GACOS 请求参数并在收到邮件结果链接后导入为下载/解算任务。"
+}
