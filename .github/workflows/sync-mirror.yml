@@ -25,6 +25,7 @@ jobs:
             exit 0
           fi
           USER_NAME="${GITEE_USER:-hhanmj}"
+          git push --force "https://${USER_NAME}:${GITEE_TOKEN}@gitee.com/${USER_NAME}/eostage-hub.git" HEAD:main --tags || \
           git push --force "https://${USER_NAME}:${GITEE_TOKEN}@gitee.com/${USER_NAME}/sceneport-hub.git" HEAD:main --tags
 
       - name: Push to GitCode (if GITCODE_TOKEN configured)
@@ -37,5 +38,5 @@ jobs:
             exit 0
           fi
           USER_NAME="${GITCODE_USER:-hhanmj}"
-          git push --force "https://oauth2:${GITCODE_TOKEN}@gitcode.com/${USER_NAME}/sceneport-hub.git" HEAD:main --tags || \
-          git push --force "https://${USER_NAME}:${GITCODE_TOKEN}@gitcode.com/${USER_NAME}/sceneport-hub.git" HEAD:main --tags
+          git push --force "https://oauth2:${GITCODE_TOKEN}@gitcode.com/${USER_NAME}/eostage-hub.git" HEAD:main --tags || \
+          git push --force "https://oauth2:${GITCODE_TOKEN}@gitcode.com/${USER_NAME}/sceneport-hub.git" HEAD:main --tags
