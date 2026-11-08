@@ -1,6 +1,7 @@
 {
   "version": 1,
-  "updated_at": "2026-11-05T10:28:46Z",
+  "schema_version": 2,
+  "updated_at": "2026-11-08T10:45:00Z",
   "entries": [
     {
       "id": "vertical-grid-egm96",
@@ -14,6 +15,13 @@
       "install_root": "runtime/vertical-grids",
       "capabilities": [
         "egm96"
+      ],
+      "platforms": [
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
       ]
     },
     {
@@ -28,6 +36,13 @@
       "install_root": "runtime/vertical-grids",
       "capabilities": [
         "egm2008"
+      ],
+      "platforms": [
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
       ]
     },
     {
@@ -42,7 +57,17 @@
       "install_root": "runtime/compat-worker",
       "capabilities": [
         "bounded-compatibility-operations"
-      ]
+      ],
+      "platforms": [
+        "windows-x86_64"
+      ],
+      "platform_packages": {
+        "windows-x86_64": {
+          "package": "components/compat-worker-1.0.0.zip",
+          "sha256": "5a19b39583d67e2b6fc9768ac52aefa45f52b4f444ed301bd97f50f6d33f35c7",
+          "size": 64251041
+        }
+      }
     },
     {
       "id": "skill-alos2-stripmap-insar",
@@ -58,6 +83,13 @@
         "sar",
         "alos2",
         "l-band"
+      ],
+      "platforms": [
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
       ],
       "skill": {
         "id": "hub-skill-alos2-stripmap-insar",
@@ -84,6 +116,13 @@
         "nisar",
         "remote-subset"
       ],
+      "platforms": [
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
+      ],
       "skill": {
         "id": "hub-skill-nisar-gslc-subset-prep",
         "name_zh": "NISAR L/S 双频 GSLC 远程子集裁剪与准备工作流",
@@ -108,6 +147,13 @@
         "insar",
         "gacos",
         "atmosphere"
+      ],
+      "platforms": [
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
       ],
       "skill": {
         "id": "hub-skill-gacos-tropospheric-delay",
