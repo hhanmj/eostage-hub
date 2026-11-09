@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema_version": 2,
-  "updated_at": "2026-11-08T10:45:00Z",
+  "updated_at": "2026-11-09T07:42:12Z",
   "entries": [
     {
       "id": "vertical-grid-egm96",
@@ -10,8 +10,8 @@
       "version": "1.0.0",
       "description": "NGA 15' 全球大地水准面高程基准网格 (EPSG:5773)，用于 DEM 正高与 WGS84 椭球高双向转换",
       "package": "components/vertical-grid-egm96-1.0.0.zip",
-      "sha256": "db239b78b881486eff5f24381f5df200955fbc1d9dd469c399d7459954bb2c2f",
-      "size": 2711433,
+      "sha256": "80c3626e6fb1cc6f0e99d7f75829d981713f51f3d1d8ee91ffd43a697711ce0f",
+      "size": 2711282,
       "install_root": "runtime/vertical-grids",
       "capabilities": [
         "egm96"
@@ -31,11 +31,35 @@
       "version": "1.0.0",
       "description": "NGA 2.5' 高精度全球大地水准面网格 (EPSG:3855)，适用于高分辨率 InSAR 地形相位精确配准",
       "package": "components/vertical-grid-egm2008-1.0.0.zip",
-      "sha256": "0884d70e4d1b7786240c97a055b4983b76d18464985b3a2ef339c70fd4a26beb",
-      "size": 80602587,
+      "sha256": "6c5c60e771e3f120507f50cc3e63f3e92a17b17ec604289579596c73181347d5",
+      "size": 80603138,
       "install_root": "runtime/vertical-grids",
       "capabilities": [
         "egm2008"
+      ],
+      "platforms": [
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
+      ]
+    },
+    {
+      "id": "native-gis-runtime",
+      "name": "Native GIS 高级地理信息引擎 (GDAL / PROJ)",
+      "kind": "component",
+      "version": "1.0.0",
+      "description": "GDAL/PROJ 私有动态库闭包与投影基准数据库，支持 DEM 椭球高重投影、GeoTIFF 与 SARscape 标准交付",
+      "package": "components/native-gis-runtime-1.0.0.zip",
+      "sha256": "f69bdf07618afa25350c9098247a7cc4a3c5b5ee2a4f0aec34d0e6563551b662",
+      "size": 14025059,
+      "install_root": "runtime/gis",
+      "capabilities": [
+        "dem-gdal-proj",
+        "gtiff",
+        "envi",
+        "sarscape-output"
       ],
       "platforms": [
         "windows-x86_64",
@@ -52,22 +76,19 @@
       "version": "1.0.0",
       "description": "受控隔离工作进程，提供特定传统格式与 SARscape 交付兼容能力",
       "package": "components/compat-worker-1.0.0.zip",
-      "sha256": "5a19b39583d67e2b6fc9768ac52aefa45f52b4f444ed301bd97f50f6d33f35c7",
-      "size": 64251041,
+      "sha256": "742c28000a74092d0eafc3168bf07688a2bdd3c306adf0cfa924fc55475e278d",
+      "size": 49959357,
       "install_root": "runtime/compat-worker",
       "capabilities": [
         "bounded-compatibility-operations"
       ],
       "platforms": [
-        "windows-x86_64"
-      ],
-      "platform_packages": {
-        "windows-x86_64": {
-          "package": "components/compat-worker-1.0.0.zip",
-          "sha256": "5a19b39583d67e2b6fc9768ac52aefa45f52b4f444ed301bd97f50f6d33f35c7",
-          "size": 64251041
-        }
-      }
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
+      ]
     },
     {
       "id": "skill-alos2-stripmap-insar",

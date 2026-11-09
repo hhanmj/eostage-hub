@@ -17,9 +17,9 @@
    git init
    git branch -M main
    git add .
-   git commit -m "chore(hub): initial eostage-hub registry and components"
-   git remote add github https://github.com/hhanmj/eostage-hub.git
-   git remote add gitcode https://gitcode.com/hhanmj/eostage-hub.git
+   git commit -m "chore(hub): initial sceneport-hub registry and components"
+   git remote add github https://github.com/hhanmj/sceneport-hub.git
+   git remote add gitcode https://gitcode.com/hhanmj/sceneport-hub.git
    git push -u github main
    git push -u gitcode main
    ```
