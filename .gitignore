@@ -1,4 +1,2 @@
-# Ignore >45MB archives in Git tree so Gitee/GitCode mirror pushes never fail on 50MB blob limits.
-# Large archives are uploaded to Releases (v1.0.0+) or R2/Pages mirrors.
-components/vertical-grid-egm2008-*.zip
-components/compat-worker-*.zip
+# All component archives (<100MB) are tracked directly for zero-config GitHub & GitCode mirror sync.
+.DS_Store
