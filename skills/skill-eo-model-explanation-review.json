@@ -1,0 +1,9 @@
+{
+  "id": "hub-skill-eo-model-explanation-review",
+  "name_zh": "遥感模型归因与误差解释",
+  "name_en": "EO Model Explanation Review",
+  "category": "earth",
+  "description_zh": "解读遥感预测的 SHAP、残差或误分类结果，限定解释尺度、适用地区和可支持的结论。",
+  "description_en": "Interpret model attributions and residuals with explicit output scales, reference populations and regional limits.",
+  "prompt_template": "用于解释已经训练的模型。明确模型版本、目标类别或回归单位、解释样本、背景集以及解释器输出尺度。若只有排名图，先给出图上可读的描述；缺少的归因值、基线或独立误差不要推算。\n先检查误差在哪里发生，按地区、季节、类别或有效观测数统计样本量及残差。随后对比正常案例与失败案例。在同一输出尺度核对“基线 + 各特征贡献之和 ≈ 被解释输出”。多分类逐类别核算；log-odds 与概率不可直接相加。全局平均绝对贡献没有方向。\n红光、近红外和由它们计算的 NDVI 高度相关，单个特征的重要性会受背景分布和模型分配影响。优先复核相关特征组、跨折排名和独立区域的表现。模型归因说明模型如何形成预测；生态因果机制需要独立研究设计与证据。\n交付一个具体预测的贡献核对、一组独立样本的误差摘要、一个可支持的结论和下一项验证。小样本分区注明样本数，不把个例推广为全区驱动因素。\n\n场景演练\n出现“NDVI 对预测最重要，因此提高 NDVI 会提升生物量”的结论时，核对 NDVI 与光谱波段的共线性以及预测误差。可以报告该版本模型对 NDVI 特征的依赖；干预效应仍需单独证据。"
+}

@@ -38,5 +38,115 @@ jobs:
             exit 0
           fi
           USER_NAME="${GITCODE_USER:-hhanmj}"
-          git push --force "https://oauth2:${GITCODE_TOKEN}@gitcode.com/${USER_NAME}/eostage-hub.git" HEAD:main --tags || \
-          git push --force "https://oauth2:${GITCODE_TOKEN}@gitcode.com/${USER_NAME}/sceneport-hub.git" HEAD:main --tags
+          export USER_NAME
+          python3 - <<'PY' || true
+          import json
+          import os
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          token = os.environ["GITCODE_TOKEN"]
+          user = os.environ.get("USER_NAME") or "hhanmj"
+          desc = "EOStage runtime components, workflow skills, and extension backup repository"
+
+          def scrub(val):
+              return str(val).replace(token, "***")
+
+          def req(method, url, payload=None):
+              path = urllib.parse.urlsplit(url).path
+              data = json.dumps(payload).encode("utf-8") if payload is not None else None
+              last_code, last_body = 0, None
+              for hdr_name, hdr_val in (
+                  ("Authorization", f"Bearer {token}"),
+                  ("PRIVATE-TOKEN", token),
+              ):
+                  headers = {
+                      hdr_name: hdr_val,
+                      "Accept": "application/json",
+                      "User-Agent": "eostage-hub-sync/1.0",
+                  }
+                  if data is not None:
+                      headers["Content-Type"] = "application/json"
+                  r = urllib.request.Request(url, data=data, headers=headers, method=method)
+                  try:
+                      with urllib.request.urlopen(r, timeout=15) as resp:
+                          raw = resp.read().decode("utf-8", errors="replace")
+                          parsed = json.loads(raw) if raw.strip().startswith(("{", "[")) else None
+                          print(f"[gitcode-api] {method} {path} -> {resp.status}")
+                          return resp.status, parsed
+                  except urllib.error.HTTPError as exc:
+                      raw = exc.read().decode("utf-8", errors="replace")
+                      parsed = None
+                      try:
+                          parsed = json.loads(raw)
+                      except Exception:
+                          parsed = {"raw": scrub(raw[:200])}
+                      hint = ""
+                      if isinstance(parsed, dict):
+                          hint = scrub(parsed.get("message") or parsed.get("error_description") or parsed.get("error") or "")[:160]
+                      print(f"[gitcode-api] {method} {path} -> {exc.code}" + (f" ({hint})" if hint else ""))
+                      last_code, last_body = exc.code, parsed
+                      if exc.code not in (401, 403):
+                          return last_code, last_body
+                  except Exception as exc:
+                      print(f"[gitcode-api] {method} {path} -> error: {scrub(exc)}")
+                      return 0, None
+              return last_code, last_body
+
+          target_url = f"https://api.gitcode.com/api/v5/repos/{user}/eostage-hub"
+          legacy_url = f"https://api.gitcode.com/api/v5/repos/{user}/sceneport-hub"
+
+          code, _ = req("GET", target_url)
+          if code == 200:
+              print("eostage-hub already exists on GitCode")
+              raise SystemExit(0)
+
+          legacy_code, legacy_info = req("GET", legacy_url)
+          if legacy_code == 200:
+              req(
+                  "PATCH",
+                  legacy_url,
+                  {
+                      "name": "eostage-hub",
+                      "path": "eostage-hub",
+                      "private": False,
+                      "public": 1,
+                      "description": desc,
+                  },
+              )
+              code, _ = req("GET", target_url)
+              if code != 200:
+                  encoded_slug = urllib.parse.quote(f"{user}/sceneport-hub", safe="")
+                  v4_payload = {
+                      "name": "eostage-hub",
+                      "path": "eostage-hub",
+                      "visibility": "public",
+                  }
+                  req("PUT", f"https://api.gitcode.com/api/v4/projects/{encoded_slug}", v4_payload)
+                  code, _ = req("GET", target_url)
+                  if code != 200 and isinstance(legacy_info, dict) and legacy_info.get("id"):
+                      proj_id = legacy_info["id"]
+                      req("PUT", f"https://api.gitcode.com/api/v4/projects/{proj_id}", v4_payload)
+                      code, _ = req("GET", target_url)
+
+          if code != 200:
+              req(
+                  "POST",
+                  "https://api.gitcode.com/api/v5/user/repos",
+                  {
+                      "name": "eostage-hub",
+                      "path": "eostage-hub",
+                      "private": False,
+                      "public": 1,
+                      "auto_init": False,
+                      "description": desc,
+                  },
+              )
+              req("GET", target_url)
+          PY
+          if ! git push --force "https://oauth2:${GITCODE_TOKEN}@gitcode.com/${USER_NAME}/eostage-hub.git" HEAD:main --tags; then
+            echo "ERROR: eostage-hub push failed; token may lack repo admin/rename scope"
+            git push --force "https://oauth2:${GITCODE_TOKEN}@gitcode.com/${USER_NAME}/sceneport-hub.git" HEAD:main --tags || true
+            exit 1
+          fi

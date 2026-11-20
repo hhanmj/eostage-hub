@@ -1,7 +1,7 @@
 {
   "version": 1,
   "schema_version": 2,
-  "updated_at": "2026-11-09T07:42:12Z",
+  "updated_at": "2026-11-20T15:00:00Z",
   "entries": [
     {
       "id": "vertical-grid-egm96",
@@ -50,7 +50,7 @@
       "name": "Native GIS 高级地理信息引擎 (GDAL / PROJ)",
       "kind": "component",
       "version": "1.0.0",
-      "description": "GDAL/PROJ 私有动态库闭包与投影基准数据库，支持 DEM 椭球高重投影、GeoTIFF 与 SARscape 标准交付",
+      "description": "GDAL/PROJ 私有动态库闭包与投影基准数据库，支持 DEM 椭球高重投影、GeoTIFF 与 SARscape 标准交付（当前已上架 macOS Apple Silicon 包，Windows x64 包待补充）",
       "package": "components/native-gis-runtime-1.0.0.zip",
       "sha256": "f69bdf07618afa25350c9098247a7cc4a3c5b5ee2a4f0aec34d0e6563551b662",
       "size": 14025059,
@@ -62,19 +62,22 @@
         "sarscape-output"
       ],
       "platforms": [
-        "windows-x86_64",
-        "macos-aarch64",
-        "macos-x86_64",
-        "linux-x86_64",
-        "linux-aarch64"
-      ]
+        "macos-aarch64"
+      ],
+      "platform_packages": {
+        "macos-aarch64": {
+          "package": "components/native-gis-runtime-1.0.0.zip",
+          "sha256": "f69bdf07618afa25350c9098247a7cc4a3c5b5ee2a4f0aec34d0e6563551b662",
+          "size": 14025059
+        }
+      }
     },
     {
       "id": "compat-worker",
       "name": "Compatibility Worker 兼容性隔离工作进程",
       "kind": "component",
       "version": "1.0.0",
-      "description": "受控隔离工作进程，提供特定传统格式与 SARscape 交付兼容能力",
+      "description": "受控隔离工作进程，提供特定传统格式与 SARscape 交付兼容能力（仅适用于 Windows x64）",
       "package": "components/compat-worker-1.0.0.zip",
       "sha256": "742c28000a74092d0eafc3168bf07688a2bdd3c306adf0cfa924fc55475e278d",
       "size": 49959357,
@@ -83,12 +86,15 @@
         "bounded-compatibility-operations"
       ],
       "platforms": [
-        "windows-x86_64",
-        "macos-aarch64",
-        "macos-x86_64",
-        "linux-x86_64",
-        "linux-aarch64"
-      ]
+        "windows-x86_64"
+      ],
+      "platform_packages": {
+        "windows-x86_64": {
+          "package": "components/compat-worker-1.0.0.zip",
+          "sha256": "742c28000a74092d0eafc3168bf07688a2bdd3c306adf0cfa924fc55475e278d",
+          "size": 49959357
+        }
+      }
     },
     {
       "id": "skill-alos2-stripmap-insar",
@@ -185,6 +191,199 @@
         "description_en": "Plan GACOS zenith tropospheric delay requests and imports aligned with SAR acquisition UTC timestamps and AOI.",
         "prompt_template": "你是 InSAR 大气相位屏幕（APS）改正专家。对流层水汽延迟是长波长或大尺度 InSAR 形变测量中最主要的误差源之一：\n1. 读取当前工作台已检索或已选中的 SAR 影像列表，汇总所有唯一成像日期（YYYY-MM-DD）及卫星过境 UTC 时刻；\n2. 核对目标区域外扩边界（建议在 working_aoi 基础上适当外扩以覆盖参考点）；\n3. 引导用户核对 GACOS 请求参数并在收到邮件结果链接后导入为下载/解算任务。"
       }
+    },
+    {
+      "id": "skill-eo-agent-capability-routing",
+      "name": "遥感智能体意图与工具匹配",
+      "kind": "skill",
+      "version": "1.0.0",
+      "description": "将自然语言遥感请求拆为可验证的步骤，按当前可用工具、数据语义和返回证据选择调用或降级。",
+      "package": "skills/skill-eo-agent-capability-routing.json",
+      "sha256": "f993728fa9c82779a8ae41419257445287d3a4afa849d1031685093e54e75cba",
+      "size": 1851,
+      "install_root": "localStorage",
+      "capabilities": [
+        "agent-routing",
+        "tool-selection"
+      ],
+      "platforms": [
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
+      ],
+      "skill": {
+        "id": "hub-skill-eo-agent-capability-routing",
+        "name_zh": "遥感智能体意图与工具匹配",
+        "name_en": "EO Agent Capability Routing",
+        "category": "core",
+        "description_zh": "将自然语言遥感请求拆为可验证的步骤，按当前可用工具、数据语义和返回证据选择调用或降级。",
+        "description_en": "Map natural-language EO tasks to available tools, scientific prerequisites and observable outputs.",
+        "prompt_template": "用于“这句话该走哪个工具”“怎样把分析接到助手”及多步遥感请求。提取研究区、时段、目标物理量、产物格式和运行位置；从会话或选择态读取已有参数，只对会改变结果的歧义提问。处理实际请求时以宿主当次提供的工具、输入约束和结果为准。\n按数据依赖拆步，为每步写明所需能力、输入、返回对象和成功证据。区分检索影像、计算指数、导出栅格、验证落盘。算法知识卡可以提供计算方法；执行仍需有对应引擎、访问条件和可调用入口。当前只能检索时，可交付已找到的候选和后续计算所缺条件。\n可替代路径要核对产品级别、波段、缩放、掩膜、单位与网格；输出语义改变时先说明差异。失败时保留已完成步骤和中间标识。预览 URL、任务提交回执和经读取的本地文件代表不同进度。\n答复用户时列出当前已完成、可执行的下一步、所缺条件和验证方式。对于设计请求交付调用契约，对于执行请求以真实工具结果更新进度。\n\n场景演练\n用户要下载某县 NDVI GeoTIFF，工具清单只有检索和下载原始影像。可选场景并验证红光、近红外和 QA 波段；将指数计算标为缺少执行入口，保留候选影像，不能报告 NDVI 文件已生成。"
+      }
+    },
+    {
+      "id": "skill-eo-model-explanation-review",
+      "name": "遥感模型归因与误差解释",
+      "kind": "skill",
+      "version": "1.0.0",
+      "description": "解读遥感预测的 SHAP、残差或误分类结果，限定解释尺度、适用地区和可支持的结论。",
+      "package": "skills/skill-eo-model-explanation-review.json",
+      "sha256": "c992c8a15044e3fe045a17b1a0319d4cf236cab754bfdd488b054855eba147dc",
+      "size": 1811,
+      "install_root": "localStorage",
+      "capabilities": [
+        "model-explanation",
+        "error-analysis"
+      ],
+      "platforms": [
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
+      ],
+      "skill": {
+        "id": "hub-skill-eo-model-explanation-review",
+        "name_zh": "遥感模型归因与误差解释",
+        "name_en": "EO Model Explanation Review",
+        "category": "earth",
+        "description_zh": "解读遥感预测的 SHAP、残差或误分类结果，限定解释尺度、适用地区和可支持的结论。",
+        "description_en": "Interpret model attributions and residuals with explicit output scales, reference populations and regional limits.",
+        "prompt_template": "用于解释已经训练的模型。明确模型版本、目标类别或回归单位、解释样本、背景集以及解释器输出尺度。若只有排名图，先给出图上可读的描述；缺少的归因值、基线或独立误差不要推算。\n先检查误差在哪里发生，按地区、季节、类别或有效观测数统计样本量及残差。随后对比正常案例与失败案例。在同一输出尺度核对“基线 + 各特征贡献之和 ≈ 被解释输出”。多分类逐类别核算；log-odds 与概率不可直接相加。全局平均绝对贡献没有方向。\n红光、近红外和由它们计算的 NDVI 高度相关，单个特征的重要性会受背景分布和模型分配影响。优先复核相关特征组、跨折排名和独立区域的表现。模型归因说明模型如何形成预测；生态因果机制需要独立研究设计与证据。\n交付一个具体预测的贡献核对、一组独立样本的误差摘要、一个可支持的结论和下一项验证。小样本分区注明样本数，不把个例推广为全区驱动因素。\n\n场景演练\n出现“NDVI 对预测最重要，因此提高 NDVI 会提升生物量”的结论时，核对 NDVI 与光谱波段的共线性以及预测误差。可以报告该版本模型对 NDVI 特征的依赖；干预效应仍需单独证据。"
+      }
+    },
+    {
+      "id": "skill-eo-model-transfer-evaluation",
+      "name": "遥感模型跨区域评估与选型",
+      "kind": "skill",
+      "version": "1.0.0",
+      "description": "为遥感分类或回归选择空间与时间独立的验证设计，用同一留出集判断模型是否适用目标地区。",
+      "package": "skills/skill-eo-model-transfer-evaluation.json",
+      "sha256": "d20ab5e221787e9c8dea23b18d16be5f1bd8876a9f30558b417489c34473c80d",
+      "size": 1831,
+      "install_root": "localStorage",
+      "capabilities": [
+        "model-selection",
+        "spatial-validation"
+      ],
+      "platforms": [
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
+      ],
+      "skill": {
+        "id": "hub-skill-eo-model-transfer-evaluation",
+        "name_zh": "遥感模型跨区域评估与选型",
+        "name_en": "EO Model Transfer Evaluation",
+        "category": "earth",
+        "description_zh": "为遥感分类或回归选择空间与时间独立的验证设计，用同一留出集判断模型是否适用目标地区。",
+        "description_en": "Evaluate EO classifiers or regressors on deployment-aligned holdouts and compare them with a common baseline.",
+        "prompt_template": "先明确预测对象和部署问题：同区插值、跨区迁移或未来预测。记录样本单位、标注日期、预测时可用的特征截止日期、空间分辨率及错误代价。\n按部署任务留出。跨区按地区、地块或空间块分组；预测未来时训练期早于评估期。重叠切片、同地块多时相与重复样本放在同组。必要时根据影像窗口、特征邻域和空间自相关设置缓冲。归一化、缺测填补、特征选择、过采样、校准与调参都在训练侧拟合。\n比较一个简单基线与候选模型，保持折、样本和指标一致。分类报告混淆矩阵、逐类召回、宏 F1 和样本数；稀有正类说明漏检与误报代价。回归报告原单位 MAE、RMSE 和分区偏差。概率用于决策时，以独立数据核查校准与阈值，最终测试集只评一次。\n输出“部署范围—切分单位—数据泄漏检查—基线与候选—误差集中处—适用结论”。缺分组字段时说明可证明的范围；没有目标区独立标签时给出验证设计，跨区精度保留为未知。\n\n场景演练\nA 市模型在随机像元划分中精度很高，拟推广 B 市。先查同一地块是否跨折，再比较空间留出表现；B 市无标签时报告仅有 A 市证据，列出 B 市目标地类的独立标注需求。"
+      }
+    },
+    {
+      "id": "skill-eo-workbench-concept",
+      "name": "遥感工作台概念设计",
+      "kind": "skill",
+      "version": "1.0.0",
+      "description": "把遥感功能构想写成可评审的用户任务、工作台状态、数据交付与验收条件。",
+      "package": "skills/skill-eo-workbench-concept.json",
+      "sha256": "b842ec6bf014941a9966173e8f47c30ae9ab0a41ba721bdd3faf02d989f3b7d1",
+      "size": 1763,
+      "install_root": "localStorage",
+      "capabilities": [
+        "concept-design",
+        "workbench"
+      ],
+      "platforms": [
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
+      ],
+      "skill": {
+        "id": "hub-skill-eo-workbench-concept",
+        "name_zh": "遥感工作台概念设计",
+        "name_en": "EO Workbench Concept Design",
+        "category": "core",
+        "description_zh": "把遥感功能构想写成可评审的用户任务、工作台状态、数据交付与验收条件。",
+        "description_en": "Turn an EO feature idea into user tasks, workbench states, output contracts and acceptance criteria.",
+        "prompt_template": "在用户要求设计新功能、比较交互方案或确定最小可用范围时使用。先用一句话写出使用者、决策对象和完成任务后能交付什么。对于已有功能，以当前代码或运行证据核实入口，将未证实能力标为待接入。\n沿一条真实任务路径列出输入、系统动作、用户可见状态和产物。逐项说明 AOI、日期、所选数据和输出网格由谁确定；变更条件后标记旧结果，不能让旧预览冒充新结果。将数据可用性、质量合格和文件成功写出设为独立判据。\n比较两个确实可行的设计，只围绕用户的关键取舍，例如即时低分辨率预览与按原网格交付的耗时。给出推荐方案、理由和本轮实现边界。只有实际接口支持预估、取消或恢复时才承诺对应交互。\n交付一页设计稿：任务句、主流程、异常状态、产物契约、可复现验收。每项验收给出初始条件、动作和可观察结果。至少覆盖一个正常案例和一个会改变用户决策的异常。\n\n场景演练\n设计“按城市制作月度 NDVI 图”。同名城市先区分行政区；区域和月份确认后展示有效覆盖率。全云时保留区域和月份供调整。预览成功后磁盘写入失败，应保留预览并单独显示交付失败。"
+      }
+    },
+    {
+      "id": "eostage-eo-recipes-plugin",
+      "name": "遥感与生态水文分析配方知识库 (43 项标准算子)",
+      "kind": "plugin",
+      "version": "1.0.0",
+      "author": "EOStage",
+      "license": "Apache-2.0",
+      "category": "insar-sar",
+      "description": "涵盖 27 项 GEE Python 云端光学/雷达/气象水文合成算子与 16 项本地 GeoTIFF 窗口流式统计配方，支持按需渐进式检索。",
+      "package": "plugins/eostage-eo-recipes-plugin-1.0.0.zip",
+      "sha256": "dd7853acb26bf70925aa8f0541b2d3ac4543ad7452ffeba416fc9111d4c6311c",
+      "size": 57450,
+      "install_root": "plugins/eostage-eo-recipes-plugin",
+      "capabilities": [
+        "gee",
+        "remote-sensing",
+        "rasterio",
+        "recipes"
+      ],
+      "keywords": [
+        "gee",
+        "remote-sensing",
+        "rasterio",
+        "ndvi",
+        "hydrology",
+        "recipes"
+      ],
+      "platforms": [
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
+      ]
+    },
+    {
+      "id": "eostage-eo-methodology-plugin",
+      "name": "遥感建模验证、归因审查与工作流路由技能包",
+      "kind": "plugin",
+      "version": "1.0.0",
+      "author": "EOStage",
+      "license": "Apache-2.0",
+      "category": "gis-spatial",
+      "description": "包含遥感分类回归空间独立留出评估、SHAP/残差尺度核查、多步工具能力路由与工作台状态契约 4 项专业技能及核验代码。",
+      "package": "plugins/eostage-eo-methodology-plugin-1.0.0.zip",
+      "sha256": "7b7abfa88272c5002095188edf0f56da75b8a284e6fcfc975940f7aa8ec2f672",
+      "size": 10231,
+      "install_root": "plugins/eostage-eo-methodology-plugin",
+      "capabilities": [
+        "spatial-cv",
+        "model-explanation",
+        "agent-routing",
+        "workbench-design"
+      ],
+      "keywords": [
+        "spatial-cv",
+        "shap",
+        "agent-routing",
+        "validation",
+        "methodology"
+      ],
+      "platforms": [
+        "windows-x86_64",
+        "macos-aarch64",
+        "macos-x86_64",
+        "linux-x86_64",
+        "linux-aarch64"
+      ]
     }
   ]
 }
