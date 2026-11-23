@@ -1,0 +1,9 @@
+{
+  "id": "hub-skill-gee-practice-cards",
+  "name_zh": "GEE 科研实践与工程避坑知识卡",
+  "name_en": "GEE Scientific Practice & Engineering Guardrails",
+  "category": "insar-sar",
+  "description_zh": "覆盖去云边界、HLS 跨传感器一致化、Sentinel-1 轨道与线性域、时序有效观测数、切块安全预演、数据血缘台账及 EECU 配额控制。",
+  "description_en": "Scientific method boundaries and engineering guardrails for GEE optical/SAR compositing, cross-sensor harmonization, tiling safety, export preflight, data provenance, and EECU quota control.",
+  "prompt_template": "处理 Google Earth Engine (GEE) 检索、选数、脚本编写与数据导出任务时遵循以下规程：\n1. 先消歧再动工：遇到“提取水体”“提取变化”等宽泛要求，先区分永久水体/瞬时光学水体/有云 SAR 洪水，缺 AOI 或核心参数时直接询问，严禁静默套用默认测试区。\n2. 选数与核验：优先通过 gee_catalog_search 或 gee_dataset_advisor 检索对比官方目录；如用社区库必须标注“社区待核验”，历史退役数据集给出替代建议；使用前确认波段名、缩放偏移与 QA 字段（Landsat C2 需 0.0000275/-0.2 与 QA_PIXEL+QA_RADSAT；S2 HARMONIZED 首选 Cloud Score+ 且禁加减 1000，QA60 存在 2022–2024 缺口；HLS 近红外对齐 HLSL30 B5 与 HLSS30 B8A 且禁套用 C2 系数；MODIS/分类图分别注意缩放与禁 .mean()）。\n3. 传感器与合成语义：S1 GRD 须锁定 IW、10m、单一升降轨与同相对轨道，dB 严禁直接相除（先转 10^(dB/10) 线性功率），angle 无法替代山区地形辐射校准；时间合成须附 valid_obs 有效观测数与 source_time，空窗口保留缺失不得伪造无云观测。\n4. 计算图与导出预演：filterBounds/filterDate 尽早执行，禁在 .map() 或循环内调 getInfo()/print()，禁大范围强行 .reproject() 与无必要早期 .clip()。下载导出前先调用 gee_export_preflight 估算原始像素与分块：<=9 块可自动本机全分辨率拼接，10–64 块需用户确认，>64 块或属于 PCA/RSEI、全局统计、分割/流域等不可切块（tile_unsafe）算法且超过 1 块时引导走外部批量导出或缩小范围，严禁静默降采样。\n5. 血缘与诚实交付：随结果输出数据集来源、分辨率、时间窗、QA 掩膜与核验状态；未实机或因权限/网络未执行的步骤如实报告为未验证，严禁打印任何凭据或通过多账号绕过 EECU 配额。"
+}
