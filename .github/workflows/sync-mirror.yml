@@ -4,7 +4,22 @@ on:
   push:
     branches: [main]
     tags: ["v*"]
+  release:
+    types: [published, edited]
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional GitHub release tag (e.g. v1.0.0) to sync to GitCode Releases"
+        required: false
+        default: ""
+        type: string
+
+concurrency:
+  group: sync-mirror-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
 
 jobs:
   sync:
@@ -25,8 +40,14 @@ jobs:
             exit 0
           fi
           USER_NAME="${GITEE_USER:-hhanmj}"
-          git push --force "https://${USER_NAME}:${GITEE_TOKEN}@gitee.com/${USER_NAME}/eostage-hub.git" HEAD:main --tags || \
-          git push --force "https://${USER_NAME}:${GITEE_TOKEN}@gitee.com/${USER_NAME}/sceneport-hub.git" HEAD:main --tags
+          MAIN_REF="HEAD"
+          if git show-ref --verify --quiet refs/remotes/origin/main; then
+            MAIN_REF="refs/remotes/origin/main"
+          elif git show-ref --verify --quiet refs/heads/main; then
+            MAIN_REF="refs/heads/main"
+          fi
+          git push --force "https://${USER_NAME}:${GITEE_TOKEN}@gitee.com/${USER_NAME}/eostage-hub.git" "${MAIN_REF}:refs/heads/main" --tags || \
+          git push --force "https://${USER_NAME}:${GITEE_TOKEN}@gitee.com/${USER_NAME}/sceneport-hub.git" "${MAIN_REF}:refs/heads/main" --tags
 
       - name: Push to GitCode (if GITCODE_TOKEN configured)
         env:
@@ -51,7 +72,11 @@ jobs:
           desc = "EOStage runtime components, workflow skills, and extension backup repository"
 
           def scrub(val):
-              return str(val).replace(token, "***")
+              s = str(val)
+              for needle in (token, urllib.parse.quote(token, safe="")):
+                  if needle:
+                      s = s.replace(needle, "***")
+              return s
 
           def req(method, url, payload=None):
               path = urllib.parse.urlsplit(url).path
@@ -145,8 +170,294 @@ jobs:
               )
               req("GET", target_url)
           PY
-          if ! git push --force "https://oauth2:${GITCODE_TOKEN}@gitcode.com/${USER_NAME}/eostage-hub.git" HEAD:main --tags; then
+          MAIN_REF="HEAD"
+          if git show-ref --verify --quiet refs/remotes/origin/main; then
+            MAIN_REF="refs/remotes/origin/main"
+          elif git show-ref --verify --quiet refs/heads/main; then
+            MAIN_REF="refs/heads/main"
+          fi
+          if ! git push --force "https://oauth2:${GITCODE_TOKEN}@gitcode.com/${USER_NAME}/eostage-hub.git" "${MAIN_REF}:refs/heads/main" --tags; then
             echo "ERROR: eostage-hub push failed; token may lack repo admin/rename scope"
-            git push --force "https://oauth2:${GITCODE_TOKEN}@gitcode.com/${USER_NAME}/sceneport-hub.git" HEAD:main --tags || true
+            git push --force "https://oauth2:${GITCODE_TOKEN}@gitcode.com/${USER_NAME}/sceneport-hub.git" "${MAIN_REF}:refs/heads/main" --tags || true
             exit 1
           fi
+
+  sync-release-gitcode:
+    needs: sync
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GITCODE_USER: ${{ secrets.GITCODE_USER }}
+      GITCODE_TOKEN: ${{ secrets.GITCODE_TOKEN }}
+      RELEASE_TAG: ${{ github.event_name == 'release' && github.event.release.tag_name || inputs.release_tag }}
+    steps:
+      - name: Check GitCode token and target release tag
+        run: |
+          if [ -z "$GITCODE_TOKEN" ]; then
+            echo "ERROR: GITCODE_TOKEN is required to sync GitHub Releases to GitCode."
+            exit 1
+          fi
+          if [ -z "$RELEASE_TAG" ]; then
+            echo "ERROR: RELEASE_TAG could not be resolved."
+            exit 1
+          fi
+          echo "Syncing GitHub Release tag: ${RELEASE_TAG}"
+
+      - name: Download GitHub Release metadata and assets
+        run: |
+          STAGE_DIR="${RUNNER_TEMP}/release-sync"
+          rm -rf "$STAGE_DIR"
+          mkdir -p "$STAGE_DIR/assets"
+          gh release view "$RELEASE_TAG" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --json tagName,name,body,isPrerelease,targetCommitish,assets \
+            > "$STAGE_DIR/release.json"
+          ASSET_COUNT=$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(len(d.get("assets", [])))' "$STAGE_DIR/release.json")
+          echo "GitHub Release has ${ASSET_COUNT} asset(s)."
+          if [ "$ASSET_COUNT" -gt 0 ]; then
+            gh release download "$RELEASE_TAG" \
+              --repo "${GITHUB_REPOSITORY}" \
+              --dir "$STAGE_DIR/assets" \
+              --clobber
+          fi
+          ls -la "$STAGE_DIR/assets"
+
+      - name: Create/update GitCode Release and upload assets
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          import pathlib
+          import subprocess
+          import sys
+          import urllib.error
+          import urllib.parse
+          import urllib.request
+
+          token = os.environ["GITCODE_TOKEN"]
+          user = os.environ.get("GITCODE_USER") or "hhanmj"
+          repo = "eostage-hub"
+          stage_dir = pathlib.Path(os.environ["RUNNER_TEMP"]) / "release-sync"
+          meta = json.loads((stage_dir / "release.json").read_text(encoding="utf-8"))
+          assets_dir = stage_dir / "assets"
+
+          tag = str(meta["tagName"]).strip()
+          release_name = str(meta.get("name") or tag).strip() or tag
+          release_body = str(meta.get("body") or f"Synced from GitHub Release {tag}").strip()
+          is_prerelease = bool(meta.get("isPrerelease", False))
+          target_commitish = str(meta.get("targetCommitish") or "main").strip() or "main"
+          gh_assets = meta.get("assets") or []
+
+          def scrub(val):
+              s = str(val)
+              for needle in (token, urllib.parse.quote(token, safe="")):
+                  if needle:
+                      s = s.replace(needle, "***")
+              return s
+
+          def safe_url_label(url):
+              parts = urllib.parse.urlsplit(url)
+              return f"{parts.scheme}://{parts.netloc}{parts.path}"
+
+          def gitcode_api(method, path, *, query=None, payload=None, timeout=60):
+              base = f"https://api.gitcode.com/api/v5{path}"
+              if query:
+                  qs = urllib.parse.urlencode(query)
+                  url = f"{base}?{qs}"
+              else:
+                  url = base
+              data = json.dumps(payload).encode("utf-8") if payload is not None else None
+              last_code, last_body = 0, None
+              for auth_mode in ("bearer", "private_token", "query_token"):
+                  req_url = url
+                  headers = {
+                      "Accept": "application/json",
+                      "User-Agent": "eostage-hub-release-sync/1.0",
+                  }
+                  if data is not None:
+                      headers["Content-Type"] = "application/json"
+                  if auth_mode == "bearer":
+                      headers["Authorization"] = f"Bearer {token}"
+                  elif auth_mode == "private_token":
+                      headers["PRIVATE-TOKEN"] = token
+                  else:
+                      sep = "&" if "?" in url else "?"
+                      req_url = f"{url}{sep}access_token={urllib.parse.quote(token, safe='')}"
+                  req = urllib.request.Request(req_url, data=data, headers=headers, method=method)
+                  try:
+                      with urllib.request.urlopen(req, timeout=timeout) as resp:
+                          raw = resp.read().decode("utf-8", errors="replace")
+                          parsed = json.loads(raw) if raw.strip().startswith(("{", "[")) else raw
+                          print(f"[gitcode-release] {method} {path} -> {resp.status}")
+                          return resp.status, parsed
+                  except urllib.error.HTTPError as exc:
+                      raw = exc.read().decode("utf-8", errors="replace")
+                      try:
+                          parsed = json.loads(raw)
+                      except Exception:
+                          parsed = {"raw": scrub(raw[:240])}
+                      hint = ""
+                      if isinstance(parsed, dict):
+                          hint = scrub(
+                              parsed.get("message")
+                              or parsed.get("error_message")
+                              or parsed.get("error_description")
+                              or parsed.get("error")
+                              or ""
+                          )[:180]
+                      print(f"[gitcode-release] {method} {path} -> {exc.code}" + (f" ({hint})" if hint else ""))
+                      last_code, last_body = exc.code, parsed
+                      if exc.code not in (401, 403):
+                          return last_code, last_body
+                  except Exception as exc:
+                      print(f"[gitcode-release] {method} {path} -> error: {scrub(exc)}")
+                      last_code, last_body = 0, {"error": scrub(exc)}
+              return last_code, last_body
+
+          encoded_tag = urllib.parse.quote(tag, safe="")
+          repo_prefix = f"/repos/{urllib.parse.quote(user, safe='')}/{urllib.parse.quote(repo, safe='')}"
+
+          # 1. Check if GitCode Release already exists for this tag
+          code, existing = gitcode_api("GET", f"{repo_prefix}/releases/tags/{encoded_tag}")
+          if code == 404:
+              create_payload = {
+                  "tag_name": tag,
+                  "name": release_name,
+                  "body": release_body,
+                  "target_commitish": target_commitish,
+                  "prerelease": is_prerelease,
+                  "release_status": "pre" if is_prerelease else "latest",
+              }
+              code, created = gitcode_api("POST", f"{repo_prefix}/releases", payload=create_payload)
+              if code not in (200, 201):
+                  # Retry with minimal required payload in case optional fields differ
+                  minimal_payload = {
+                      "tag_name": tag,
+                      "name": release_name,
+                      "body": release_body,
+                      "target_commitish": target_commitish,
+                  }
+                  code, created = gitcode_api("POST", f"{repo_prefix}/releases", payload=minimal_payload)
+              if code not in (200, 201):
+                  print(f"ERROR: failed to create GitCode release {tag}: HTTP {code} {scrub(created)}", file=sys.stderr)
+                  sys.exit(1)
+              existing = created
+          elif code == 200:
+              # Best-effort update metadata for edited releases
+              rel_id = existing.get("id") if isinstance(existing, dict) else None
+              if rel_id is not None:
+                  gitcode_api(
+                      "PATCH",
+                      f"{repo_prefix}/releases/{rel_id}",
+                      payload={
+                          "tag_name": tag,
+                          "name": release_name,
+                          "body": release_body,
+                          "prerelease": is_prerelease,
+                      },
+                  )
+          else:
+              print(f"ERROR: failed to inspect GitCode release {tag}: HTTP {code} {scrub(existing)}", file=sys.stderr)
+              sys.exit(1)
+
+          # Collect existing attachment names (if returned)
+          existing_asset_names = set()
+          if isinstance(existing, dict) and isinstance(existing.get("assets"), list):
+              for item in existing["assets"]:
+                  if isinstance(item, dict) and item.get("name"):
+                      existing_asset_names.add(str(item["name"]))
+          list_code, attach_list = gitcode_api("GET", f"{repo_prefix}/releases/{encoded_tag}/attach_files")
+          if list_code == 200 and isinstance(attach_list, list):
+              for item in attach_list:
+                  if isinstance(item, dict) and item.get("name"):
+                      existing_asset_names.add(str(item["name"]))
+
+          # 2. Upload each downloaded GitHub Release asset via GitCode pre-signed OBS upload URL
+          for asset in gh_assets:
+              file_name = str(asset["name"]).strip()
+              expected_size = int(asset.get("size") or 0)
+              local_file = assets_dir / file_name
+              if not local_file.is_file():
+                  print(f"ERROR: downloaded asset missing on disk: {file_name}", file=sys.stderr)
+                  sys.exit(1)
+              actual_size = local_file.stat().st_size
+              if expected_size > 0 and actual_size != expected_size:
+                  print(
+                      f"ERROR: asset size mismatch for {file_name}: expected {expected_size}, got {actual_size}",
+                      file=sys.stderr,
+                  )
+                  sys.exit(1)
+
+              encoded_name = urllib.parse.quote(file_name, safe="")
+              if file_name in existing_asset_names:
+                  del_code, del_body = gitcode_api(
+                      "DELETE",
+                      f"{repo_prefix}/releases/{encoded_tag}/attach_files/{encoded_name}",
+                  )
+                  if del_code not in (200, 204, 404):
+                      print(
+                          f"ERROR: failed to delete previous GitCode asset {file_name}: HTTP {del_code} {scrub(del_body)}",
+                          file=sys.stderr,
+                      )
+                      sys.exit(1)
+
+              up_code, up_info = gitcode_api(
+                  "GET",
+                  f"{repo_prefix}/releases/{encoded_tag}/upload_url",
+                  query={"file_name": file_name},
+              )
+              if up_code != 200 or not isinstance(up_info, dict) or not up_info.get("url"):
+                  print(
+                      f"ERROR: failed to obtain GitCode upload_url for {file_name}: HTTP {up_code} {scrub(up_info)}",
+                      file=sys.stderr,
+                  )
+                  sys.exit(1)
+
+              upload_url = str(up_info["url"]).strip()
+              raw_headers = up_info.get("headers") if isinstance(up_info.get("headers"), dict) else {}
+
+              # Stream upload with curl using ONLY the pre-signed OBS headers (never forward GitCode/GitHub tokens)
+              curl_cmd = [
+                  "curl",
+                  "-fsS",
+                  "--retry",
+                  "2",
+                  "--retry-delay",
+                  "3",
+                  "--connect-timeout",
+                  "30",
+                  "--max-time",
+                  "600",
+                  "-X",
+                  "PUT",
+                  "-T",
+                  str(local_file),
+              ]
+              for hdr_k, hdr_v in raw_headers.items():
+                  k_str = str(hdr_k).strip()
+                  if not k_str:
+                      continue
+                  if k_str.lower() in ("authorization", "private-token", "cookie", "host", "content-length"):
+                      continue
+                  curl_cmd.extend(["-H", f"{k_str}: {hdr_v}"])
+              curl_cmd.append(upload_url)
+
+              print(
+                  f"[gitcode-upload] PUT {file_name} ({actual_size} bytes) -> {safe_url_label(upload_url)}"
+              )
+              proc = subprocess.run(curl_cmd, capture_output=True, text=True, check=False)
+              if proc.returncode != 0:
+                  raw_err = (proc.stderr or proc.stdout or "").replace(
+                      upload_url, safe_url_label(upload_url)
+                  )
+                  err_out = scrub(raw_err)[:300]
+                  print(
+                      f"ERROR: OBS PUT upload failed for {file_name} (exit {proc.returncode}): {err_out}",
+                      file=sys.stderr,
+                  )
+                  sys.exit(1)
+              print(f"[gitcode-upload] OK: {file_name}")
+
+          print(f"Successfully synced {len(gh_assets)} asset(s) to GitCode Release {tag}.")
+          PY

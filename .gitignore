@@ -1,2 +1,5 @@
-# All component archives (<100MB) are tracked directly for zero-config GitHub & GitCode mirror sync.
+# Large runtime component archives (>= 2 MB) are hosted via GitHub & GitCode Releases
+# rather than tracked directly in Git commits.
+.release-assets/
+components/*.zip
 .DS_Store

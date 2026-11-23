@@ -1,27 +1,29 @@
 # EOStage Extension Hub (`eostage-hub`)
 
-本仓库用于托管 EOStage 的按需安装大体积运行组件包（高程基准网格、地理信息引擎、兼容工作进程），使主安装包保持轻量化；同时兼作遥感与 GEE 知识库技能的远端分发与备份。
+本仓库用于托管 EOStage 的扩展清单、工作流技能、知识库插件包，以及通过 **GitHub Releases + GitCode Releases 双端发行版** 分发按需安装的大体积运行组件包（高程基准网格、地理信息引擎、兼容工作进程），使主安装包与 Git 仓库均保持轻量化。
 
-> **架构说明**：核心遥感算子配方（99 项）与教材攻略（5 章）已直接内置于 EOStage 桌面端本地包内；新增的 GEE 科研实践专题卡（10 项）及各独立技能包均已清洗、去重并通过双端同步机制对外分发，使主安装包保持轻量化，大体积运行组件按需下载。
+> **架构说明**：
+> - 轻量的 `registry.json`、`blocklist.json`、`skills/` 工作流提示词与 `plugins/` 遥感知识库插件包直接托管于 Git 仓库内；
+> - 4 类大体积运行组件包（EGM96、EGM2008、macOS Apple Silicon 与 Windows x64 双端 `native-gis-runtime`、Windows x64 `compat-worker`）统一托管于 **GitHub Releases** 与 **GitCode Releases**，由自动化工作流实现“只需上传 GitHub Release，自动同步 GitCode Release”。
 
 ## 目录结构
 
-- `registry.json`：统一扩展清单（Schema v2，采用相对路径 `package`、分平台 `platforms` / `platform_packages` 与强制 64 位小写 SHA-256 校验值，支持 GitCode / GitHub 双端零修改同步）
+- `registry.json`：统一扩展清单（Schema v2，轻量技能/插件使用相对路径，大体积运行组件使用发行版附件直链、分平台 `platforms` / `platform_packages` 与强制 64 位小写 SHA-256 校验值）
 - `blocklist.json`：安全吊销列表（支持按 `id` 或 `sha256` 拦截问题版本）
-- `components/`：按需下载的运行组件压缩包（客户端下载后执行 SHA-256 校验、`.old` 原子备份、自检与失败自动回滚）
+- `components/`：运行组件发行版托管说明（压缩包附件托管于 Releases，不再直接提交至 Git）
 - `skills/`：扩展工作流提示词技能 JSON 备份
 - `plugins/`：遥感分析配方与建模方法学知识库压缩包备份
 
 ## 当前收录清单（共 16 项）
 
-### 1. 运行组件（4 项，严格区分支持系统）
+### 1. 运行组件（4 项，Releases 双端托管，严格区分支持系统）
 
-| 组件 ID | 说明 | 适用系统（`platforms`） | 备注 |
+| 组件 ID | 说明 | 适用系统（`platforms`） | 发行版附件文件名（`v1.1.0`） |
 | --- | --- | --- | --- |
-| `vertical-grid-egm96` | NGA 15' 全球大地水准面高程基准网格（EPSG:5773） | 全平台（Windows x64 / macOS / Linux） | 通用数据网格 |
-| `vertical-grid-egm2008` | NGA 2.5' 高精度全球大地水准面网格（EPSG:3855） | 全平台（Windows x64 / macOS / Linux） | 通用数据网格 |
-| `native-gis-runtime` | GDAL / PROJ 私有动态库闭包与投影基准数据库 | `macos-aarch64`（Apple Silicon） | Windows x64 包待在 Windows 环境编译后补充 |
-| `compat-worker` | 传统格式与兼容交付隔离工作进程 | `windows-x86_64`（Windows x64） | 仅适用于 Windows x64 |
+| `vertical-grid-egm96` | NGA 15' 全球大地水准面高程基准网格（EPSG:5773） | 全平台（Windows x64 / macOS / Linux） | `vertical-grid-egm96-1.0.0.zip` |
+| `vertical-grid-egm2008` | NGA 2.5' 高精度全球大地水准面网格（EPSG:3855） | 全平台（Windows x64 / macOS / Linux） | `vertical-grid-egm2008-1.0.0.zip` |
+| `native-gis-runtime` | GDAL / PROJ 私有动态库闭包与投影基准数据库 | `macos-aarch64`（Apple Silicon）、`windows-x86_64`（Windows x64） | `native-gis-runtime-1.0.0.zip`（macOS Apple Silicon）<br>`native-gis-runtime-1.0.0-windows-x86_64.zip`（Windows x64） |
+| `compat-worker` | 传统格式与兼容交付隔离工作进程 | `windows-x86_64`（Windows x64） | `compat-worker-1.0.0.zip` |
 
 ### 2. 工作流提示词技能备份（8 项，全平台通用）
 
@@ -43,15 +45,11 @@
 
 ## 双端同步部署（GitHub + GitCode）
 
-1. **推送至 GitHub 与 GitCode 双端仓库**：
-   ```bash
-   git remote add github https://github.com/hhanmj/eostage-hub.git
-   git remote add gitcode https://gitcode.com/hhanmj/eostage-hub.git
-   git push -u github main
-   git push -u gitcode main
-   ```
-   > **提示**：GitHub Actions（`.github/workflows/sync-mirror.yml`）已配置推送后自动镜像同步；EOStage 客户端在直连 API 限流或预览不可用时会自动走 GitCode 标准 Git 协议通道拉取大组件并回退至 GitHub。
-
-2. **客户端切换镜像源**：
-   - 打开 EOStage 桌面端 **「设置」 -> 「运行环境与工具」**；
-   - 可切换 **GitCode 国内加速源（自动含免限流通道）**、**GitHub 官方源** 或 **本地扩展清单**，所选配置会在重启后自动保留。
+1. **代码与标签镜像同步**：
+   - 推送至 GitHub `main` 分支或 `v*` 标签后，`.github/workflows/sync-mirror.yml` 会自动将仓库历史与标签镜像同步至 GitCode（及已配置令牌的 Gitee）。
+2. **发行版与大组件附件自动同步**：
+   - 在 GitHub 发布或编辑 Release（或在 Actions 中手动触发 `workflow_dispatch` 并填写 `release_tag`）时，`sync-mirror.yml` 会先确保目标标签已推送至 GitCode，随后利用 `GITCODE_TOKEN` 自动在 GitCode 创建/更新同版本 Release，并将 GitHub Release 下的全部组件附件同步上传至 GitCode Releases。
+3. **客户端镜像源与自动回退**：
+   - EOStage 桌面端默认内置 **GitCode 国内加速源**，并在发行版下载异常或不可达时自动回退至 **GitHub Releases**；
+   - 打开 EOStage 桌面端 **「设置」 -> 「运行环境与工具」**，可一键在线安装运行组件或导入本地组件包（底层配置同时保留 GitCode / GitHub / 本地自定义源持久化测试能力）；
+   - 全过程强制执行 64 位小写 SHA-256 校验、体积上限保护、跨平台防呆检测、安装后自检与失败自动回滚。
