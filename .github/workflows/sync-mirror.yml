@@ -185,6 +185,7 @@ jobs:
   sync-release-gitcode:
     needs: sync
     runs-on: ubuntu-latest
+    timeout-minutes: 25
     if: github.event_name == 'release' || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
     env:
       GH_TOKEN: ${{ github.token }}
@@ -225,12 +226,13 @@ jobs:
 
       - name: Create/update GitCode Release and upload assets
         run: |
-          python3 - <<'PY'
+          python3 -u - <<'PY'
           import json
           import os
           import pathlib
           import subprocess
           import sys
+          import time
           import urllib.error
           import urllib.parse
           import urllib.request
@@ -247,7 +249,10 @@ jobs:
           release_body = str(meta.get("body") or f"Synced from GitHub Release {tag}").strip()
           is_prerelease = bool(meta.get("isPrerelease", False))
           target_commitish = str(meta.get("targetCommitish") or "main").strip() or "main"
-          gh_assets = meta.get("assets") or []
+          gh_assets = sorted(meta.get("assets") or [], key=lambda item: int(item.get("size") or 0))
+
+          def log(msg, *, err=False):
+              print(msg, file=sys.stderr if err else sys.stdout, flush=True)
 
           def scrub(val):
               s = str(val)
@@ -289,7 +294,7 @@ jobs:
                       with urllib.request.urlopen(req, timeout=timeout) as resp:
                           raw = resp.read().decode("utf-8", errors="replace")
                           parsed = json.loads(raw) if raw.strip().startswith(("{", "[")) else raw
-                          print(f"[gitcode-release] {method} {path} -> {resp.status}")
+                          log(f"[gitcode-release] {method} {path} -> {resp.status}")
                           return resp.status, parsed
                   except urllib.error.HTTPError as exc:
                       raw = exc.read().decode("utf-8", errors="replace")
@@ -306,12 +311,12 @@ jobs:
                               or parsed.get("error")
                               or ""
                           )[:180]
-                      print(f"[gitcode-release] {method} {path} -> {exc.code}" + (f" ({hint})" if hint else ""))
+                      log(f"[gitcode-release] {method} {path} -> {exc.code}" + (f" ({hint})" if hint else ""))
                       last_code, last_body = exc.code, parsed
                       if exc.code not in (401, 403):
                           return last_code, last_body
                   except Exception as exc:
-                      print(f"[gitcode-release] {method} {path} -> error: {scrub(exc)}")
+                      log(f"[gitcode-release] {method} {path} -> error: {scrub(exc)}")
                       last_code, last_body = 0, {"error": scrub(exc)}
               return last_code, last_body
 
@@ -340,7 +345,7 @@ jobs:
                   }
                   code, created = gitcode_api("POST", f"{repo_prefix}/releases", payload=minimal_payload)
               if code not in (200, 201):
-                  print(f"ERROR: failed to create GitCode release {tag}: HTTP {code} {scrub(created)}", file=sys.stderr)
+                  log(f"ERROR: failed to create GitCode release {tag}: HTTP {code} {scrub(created)}", err=True)
                   sys.exit(1)
               existing = created
           elif code == 200:
@@ -358,47 +363,52 @@ jobs:
                       },
                   )
           else:
-              print(f"ERROR: failed to inspect GitCode release {tag}: HTTP {code} {scrub(existing)}", file=sys.stderr)
+              log(f"ERROR: failed to inspect GitCode release {tag}: HTTP {code} {scrub(existing)}", err=True)
               sys.exit(1)
 
-          # Collect existing attachment names (if returned)
-          existing_asset_names = set()
+          # Collect existing attachment names and sizes (if returned)
+          existing_asset_sizes = {}
           if isinstance(existing, dict) and isinstance(existing.get("assets"), list):
               for item in existing["assets"]:
                   if isinstance(item, dict) and item.get("name"):
-                      existing_asset_names.add(str(item["name"]))
+                      existing_asset_sizes[str(item["name"])] = item.get("size")
           list_code, attach_list = gitcode_api("GET", f"{repo_prefix}/releases/{encoded_tag}/attach_files")
           if list_code == 200 and isinstance(attach_list, list):
               for item in attach_list:
                   if isinstance(item, dict) and item.get("name"):
-                      existing_asset_names.add(str(item["name"]))
+                      existing_asset_sizes[str(item["name"])] = item.get("size")
+          log(f"[gitcode-release] existing attachments on {tag}: {sorted(existing_asset_sizes.keys())}")
 
-          # 2. Upload each downloaded GitHub Release asset via GitCode pre-signed OBS upload URL
+          # 2. Upload each downloaded GitHub Release asset (smallest first for fast fail-feedback)
           for asset in gh_assets:
               file_name = str(asset["name"]).strip()
               expected_size = int(asset.get("size") or 0)
               local_file = assets_dir / file_name
               if not local_file.is_file():
-                  print(f"ERROR: downloaded asset missing on disk: {file_name}", file=sys.stderr)
+                  log(f"ERROR: downloaded asset missing on disk: {file_name}", err=True)
                   sys.exit(1)
               actual_size = local_file.stat().st_size
               if expected_size > 0 and actual_size != expected_size:
-                  print(
+                  log(
                       f"ERROR: asset size mismatch for {file_name}: expected {expected_size}, got {actual_size}",
-                      file=sys.stderr,
+                      err=True,
                   )
                   sys.exit(1)
 
-              encoded_name = urllib.parse.quote(file_name, safe="")
-              if file_name in existing_asset_names:
+              if file_name in existing_asset_sizes:
+                  remote_size = existing_asset_sizes[file_name]
+                  if isinstance(remote_size, int) and remote_size == actual_size:
+                      log(f"[gitcode-upload] SKIP already synced ({actual_size} bytes): {file_name}")
+                      continue
+                  encoded_name = urllib.parse.quote(file_name, safe="")
                   del_code, del_body = gitcode_api(
                       "DELETE",
                       f"{repo_prefix}/releases/{encoded_tag}/attach_files/{encoded_name}",
                   )
                   if del_code not in (200, 204, 404):
-                      print(
+                      log(
                           f"ERROR: failed to delete previous GitCode asset {file_name}: HTTP {del_code} {scrub(del_body)}",
-                          file=sys.stderr,
+                          err=True,
                       )
                       sys.exit(1)
 
@@ -408,27 +418,43 @@ jobs:
                   query={"file_name": file_name},
               )
               if up_code != 200 or not isinstance(up_info, dict) or not up_info.get("url"):
-                  print(
+                  log(
                       f"ERROR: failed to obtain GitCode upload_url for {file_name}: HTTP {up_code} {scrub(up_info)}",
-                      file=sys.stderr,
+                      err=True,
                   )
                   sys.exit(1)
 
               upload_url = str(up_info["url"]).strip()
               raw_headers = up_info.get("headers") if isinstance(up_info.get("headers"), dict) else {}
+              hdr_keys = sorted(str(k) for k in raw_headers.keys())
+              log(
+                  f"[gitcode-upload] prepared {file_name} ({actual_size} bytes) -> {safe_url_label(upload_url)} headers={hdr_keys}"
+              )
 
-              # Stream upload with curl using ONLY the pre-signed OBS headers (never forward GitCode/GitHub tokens)
+              # Stream upload with curl using ONLY the pre-signed OBS headers (never forward GitCode/GitHub tokens).
+              # Force HTTP/1.1 and disable Expect: 100-continue to avoid OBS proxy stalls on large PUT uploads.
               curl_cmd = [
                   "curl",
                   "-fsS",
+                  "--http1.1",
+                  "-H",
+                  "Expect:",
                   "--retry",
                   "2",
                   "--retry-delay",
-                  "3",
+                  "5",
                   "--connect-timeout",
                   "30",
+                  "--speed-time",
+                  "60",
+                  "--speed-limit",
+                  "1024",
                   "--max-time",
-                  "600",
+                  "480",
+                  "-o",
+                  "/dev/null",
+                  "-w",
+                  "http=%{http_code} size_upload=%{size_upload} speed=%{speed_upload}B/s time=%{time_total}s",
                   "-X",
                   "PUT",
                   "-T",
@@ -443,21 +469,37 @@ jobs:
                   curl_cmd.extend(["-H", f"{k_str}: {hdr_v}"])
               curl_cmd.append(upload_url)
 
-              print(
-                  f"[gitcode-upload] PUT {file_name} ({actual_size} bytes) -> {safe_url_label(upload_url)}"
-              )
+              t0 = time.monotonic()
               proc = subprocess.run(curl_cmd, capture_output=True, text=True, check=False)
+              elapsed = time.monotonic() - t0
               if proc.returncode != 0:
                   raw_err = (proc.stderr or proc.stdout or "").replace(
                       upload_url, safe_url_label(upload_url)
                   )
                   err_out = scrub(raw_err)[:300]
-                  print(
-                      f"ERROR: OBS PUT upload failed for {file_name} (exit {proc.returncode}): {err_out}",
-                      file=sys.stderr,
+                  log(
+                      f"ERROR: OBS PUT upload failed for {file_name} after {elapsed:.1f}s (exit {proc.returncode}): {err_out}",
+                      err=True,
                   )
                   sys.exit(1)
-              print(f"[gitcode-upload] OK: {file_name}")
+              log(f"[gitcode-upload] OK: {file_name} ({proc.stdout.strip()})")
 
-          print(f"Successfully synced {len(gh_assets)} asset(s) to GitCode Release {tag}.")
+          # 3. Verify final attachment list on GitCode Release
+          verify_code, verify_list = gitcode_api("GET", f"{repo_prefix}/releases/{encoded_tag}/attach_files")
+          if verify_code == 200 and isinstance(verify_list, list):
+              remote_names = {
+                  str(item["name"])
+                  for item in verify_list
+                  if isinstance(item, dict) and item.get("name")
+              }
+              expected_names = {str(a["name"]).strip() for a in gh_assets}
+              log(f"[gitcode-release] verified {len(remote_names)} attachment(s) on {tag}: {sorted(remote_names)}")
+              missing = sorted(expected_names - remote_names)
+              if missing:
+                  log(f"ERROR: missing attachment(s) on GitCode Release {tag} after upload: {missing}", err=True)
+                  sys.exit(1)
+          else:
+              log(f"[gitcode-release] attach_files post-check returned HTTP {verify_code} (continuing)")
+
+          log(f"Successfully synced {len(gh_assets)} asset(s) to GitCode Release {tag}.")
           PY
